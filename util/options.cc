@@ -206,6 +206,79 @@ ColumnFamilyOptions::ColumnFamilyOptions(const Options& options)
   }
 }
 
+ColumnFamilyOptions::ColumnFamilyOptions(const ColumnFamilyOptions& options)
+    : comparator(options.comparator),
+      merge_operator(options.merge_operator),
+      compaction_filter(options.compaction_filter),
+      compaction_filter_factory(options.compaction_filter_factory),
+      write_buffer_size(options.write_buffer_size),
+      max_write_buffer_number(options.max_write_buffer_number),
+      min_write_buffer_number_to_merge(
+          options.min_write_buffer_number_to_merge),
+      max_write_buffer_number_to_maintain(
+          options.max_write_buffer_number_to_maintain),
+      compression(options.compression),
+      compression_per_level(options.compression_per_level),
+      compression_opts(options.compression_opts),
+      prefix_extractor(options.prefix_extractor),
+      num_levels(options.num_levels),
+      level0_file_num_compaction_trigger(
+          options.level0_file_num_compaction_trigger),
+      level0_slowdown_writes_trigger(options.level0_slowdown_writes_trigger),
+      level0_stop_writes_trigger(options.level0_stop_writes_trigger),
+      target_file_size_base(options.target_file_size_base),
+      target_file_size_multiplier(options.target_file_size_multiplier),
+      max_bytes_for_level_base(options.max_bytes_for_level_base),
+      level_compaction_dynamic_level_bytes(
+          options.level_compaction_dynamic_level_bytes),
+      max_bytes_for_level_multiplier(options.max_bytes_for_level_multiplier),
+      max_bytes_for_level_multiplier_additional(
+          options.max_bytes_for_level_multiplier_additional),
+      expanded_compaction_factor(options.expanded_compaction_factor),
+      source_compaction_factor(options.source_compaction_factor),
+      max_grandparent_overlap_factor(options.max_grandparent_overlap_factor),
+      soft_rate_limit(options.soft_rate_limit),
+      soft_pending_compaction_bytes_limit(
+          options.soft_pending_compaction_bytes_limit),
+      hard_pending_compaction_bytes_limit(
+          options.hard_pending_compaction_bytes_limit),
+      rate_limit_delay_max_milliseconds(
+          options.rate_limit_delay_max_milliseconds),
+      arena_block_size(options.arena_block_size),
+      disable_auto_compactions(options.disable_auto_compactions),
+      purge_redundant_kvs_while_flush(options.purge_redundant_kvs_while_flush),
+      compaction_style(options.compaction_style),
+      compaction_pri(options.compaction_pri),
+      verify_checksums_in_compaction(options.verify_checksums_in_compaction),
+      compaction_options_universal(options.compaction_options_universal),
+      compaction_options_fifo(options.compaction_options_fifo),
+      filter_deletes(options.filter_deletes),
+      max_sequential_skip_in_iterations(
+          options.max_sequential_skip_in_iterations),
+      memtable_factory(options.memtable_factory),
+      table_factory(options.table_factory),
+      table_properties_collector_factories(
+          options.table_properties_collector_factories),
+      inplace_update_support(options.inplace_update_support),
+      inplace_update_num_locks(options.inplace_update_num_locks),
+      inplace_callback(options.inplace_callback),
+      memtable_prefix_bloom_bits(options.memtable_prefix_bloom_bits),
+      memtable_prefix_bloom_probes(options.memtable_prefix_bloom_probes),
+      memtable_prefix_bloom_huge_page_tlb_size(
+          options.memtable_prefix_bloom_huge_page_tlb_size),
+      bloom_locality(options.bloom_locality),
+      max_successive_merges(options.max_successive_merges),
+      min_partial_merge_operands(options.min_partial_merge_operands),
+      optimize_filters_for_hits(options.optimize_filters_for_hits),
+      paranoid_file_checks(options.paranoid_file_checks),
+      compaction_measure_io_stats(options.compaction_measure_io_stats) {
+  assert(memtable_factory.get() != nullptr);
+  if (max_bytes_for_level_multiplier_additional.size() <
+      static_cast<unsigned int>(num_levels)) {
+    max_bytes_for_level_multiplier_additional.resize(num_levels, 1);
+  }
+}
+
 DBOptions::DBOptions()
     : create_if_missing(false),
       create_missing_column_families(false),
@@ -275,6 +348,483 @@ DBOptions::DBOptions()
       fail_if_options_file_error(false) {
 }
 
+DBOptions::DBOptions(const DBOptions& options)
+{
+    // If true, the database will be created if it is missing.
+    // Default: false
+    create_if_missing = options.create_if_missing;
+
+    // If true, missing column families will be automatically created.
+    // Default: false
+    create_missing_column_families = options.create_missing_column_families;
+
+    // If true, an error is raised if the database already exists.
+    // Default: false
+    error_if_exists = options.error_if_exists;
+
+    // If true, RocksDB will aggressively check consistency of the data.
+    // Also, if any of the  writes to the database fails (Put, Delete, Merge,
+    // Write), the database will switch to read-only mode and fail all other
+    // Write operations.
+    // In most cases you want this to be set to true.
+    // Default: true
+    paranoid_checks = options.paranoid_checks;
+
+    // Use the specified object to interact with the environment,
+    // e.g. to read/write files, schedule background work, etc.
+    // Default: Env::Default()
+    env = options.env;
+
+    // Use to control write rate of flush and compaction. Flush has higher
+    // priority than compaction. Rate limiting is disabled if nullptr.
+    // If rate limiter is enabled, bytes_per_sync is set to 1MB by default.
+    // Default: nullptr
+    rate_limiter = options.rate_limiter;
+
+    // Use to track SST files and control their file deletion rate.
+    //
+    // Features:
+    //  - Throttle the deletion rate of the SST files.
+    //  - Keep track the total size of all SST files.
+    //  - Set a maximum allowed space limit for SST files that when reached
+    //    the DB wont do any further flushes or compactions and will set the
+    //    background error.
+    //  - Can be shared between multiple dbs.
+    // Limitations:
+    //  - Only track and throttle deletes of SST files in
+    //    first db_path (db_name if db_paths is empty).
+    //
+    // Default: nullptr
+    sst_file_manager = options.sst_file_manager;
+
+    // Any internal progress/error information generated by the db will
+    // be written to info_log if it is non-nullptr, or to a file stored
+    // in the same directory as the DB contents if info_log is nullptr.
+    // Default: nullptr
+    info_log = options.info_log;
+
+    info_log_level = options.info_log_level;
+
+    // Number of open files that can be used by the DB.  You may need to
+    // increase this if your database has a large working set. Value -1 means
+    // files opened are always kept open. You can estimate number of files based
+    // on target_file_size_base and target_file_size_multiplier for level-based
+    // compaction. For universal-style compaction, you can usually set it to -1.
+    // Default: 5000 or ulimit value of max open files (whichever is smaller)
+    max_open_files = options.max_open_files;
+
+    // If max_open_files is -1, DB will open all files on DB::Open(). You can
+    // use this option to increase the number of threads used to open the files.
+    // Default: 1
+    max_file_opening_threads = options.max_file_opening_threads;
+
+    // Once write-ahead logs exceed this size, we will start forcing the flush of
+    // column families whose memtables are backed by the oldest live WAL file
+    // (i.e. the ones that are causing all the space amplification). If set to 0
+    // (default), we will dynamically choose the WAL size limit to be
+    // [sum of all write_buffer_size * max_write_buffer_number] * 4
+    // Default: 0
+    max_total_wal_size = options.max_total_wal_size;
+
+    // If non-null, then we should collect metrics about database operations
+    // Statistics objects should not be shared between DB instances as
+    // it does not use any locks to prevent concurrent updates.
+    statistics = options.statistics;
+
+    // If true, then the contents of manifest and data files are not synced
+    // to stable storage. Their contents remain in the OS buffers till the
+    // OS decides to flush them. This option is good for bulk-loading
+    // of data. Once the bulk-loading is complete, please issue a
+    // sync to the OS to flush all dirty buffesrs to stable storage.
+    // Default: false
+    disableDataSync = options.disableDataSync;
+
+    // If true, then every store to stable storage will issue a fsync.
+    // If false, then every store to stable storage will issue a fdatasync.
+    // This parameter should be set to true while storing data to
+    // filesystem like ext3 that can lose files after a reboot.
+    // Default: false
+    use_fsync = options.use_fsync;
+
+    // A list of paths where SST files can be put into, with its target size.
+    // Newer data is placed into paths specified earlier in the vector while
+    // older data gradually moves to paths specified later in the vector.
+    //
+    // For example, you have a flash device with 10GB allocated for the DB,
+    // as well as a hard drive of 2TB, you should config it to be:
+    //   [{"/flash_path", 10GB}, {"/hard_drive", 2TB}]
+    //
+    // The system will try to guarantee data under each path is close to but
+    // not larger than the target size. But current and future file sizes used
+    // by determining where to place a file are based on best-effort estimation,
+    // which means there is a chance that the actual size under the directory
+    // is slightly more than target size under some workloads. User should give
+    // some buffer room for those cases.
+    //
+    // If none of the paths has sufficient room to place a file, the file will
+    // be placed to the last path anyway, despite to the target size.
+    //
+    // Placing newer data to earlier paths is also best-efforts. User should
+    // expect user files to be placed in higher levels in some extreme cases.
+    //
+    // If left empty, only one path will be used, which is db_name passed when
+    // opening the DB.
+    // Default: empty
+    db_paths = options.db_paths;
+
+    // This specifies the info LOG dir.
+    // If it is empty, the log files will be in the same dir as data.
+    // If it is non empty, the log files will be in the specified dir,
+    // and the db data dir's absolute path will be used as the log file
+    // name's prefix.
+    db_log_dir = options.db_log_dir;
+
+    // This specifies the absolute dir path for write-ahead logs (WAL).
+    // If it is empty, the log files will be in the same dir as data,
+    //   dbname is used as the data dir by default
+    // If it is non empty, the log files will be in kept the specified dir.
+    // When destroying the db,
+    //   all log files in wal_dir and the dir itself is deleted
+    wal_dir = options.wal_dir;
+
+    // The periodicity when obsolete files get deleted. The default
+    // value is 6 hours. The files that get out of scope by compaction
+    // process will still get automatically delete on every compaction,
+    // regardless of this setting
+    delete_obsolete_files_period_micros = options.delete_obsolete_files_period_micros;
+
+    // Suggested number of concurrent background compaction jobs, submitted to
+    // the default LOW priority thread pool.
+    //
+    // Default: max_background_compactions
+    base_background_compactions = options.base_background_compactions;
+
+    // Maximum number of concurrent background compaction jobs, submitted to
+    // the default LOW priority thread pool.
+    // We first try to schedule compactions based on
+    // `base_background_compactions`. If the compaction cannot catch up , we
+    // will increase number of compaction threads up to
+    // `max_background_compactions`.
+    //
+    // If you're increasing this, also consider increasing number of threads in
+    // LOW priority thread pool. For more information, see
+    // Env::SetBackgroundThreads
+    // Default: 1
+    max_background_compactions = options.max_background_compactions;
+
+    // This value represents the maximum number of threads that will
+    // concurrently perform a compaction job by breaking it into multiple,
+    // smaller ones that are run simultaneously.
+    // Default: 1 (i.e. no subcompactions)
+    max_subcompactions = options.max_subcompactions;
+
+    // Maximum number of concurrent background memtable flush jobs, submitted to
+    // the HIGH priority thread pool.
+    //
+    // By default, all background jobs (major compaction and memtable flush) go
+    // to the LOW priority pool. If this option is set to a positive number,
+    // memtable flush jobs will be submitted to the HIGH priority pool.
+    // It is important when the same Env is shared by multiple db instances.
+    // Without a separate pool, long running major compaction jobs could
+    // potentially block memtable flush jobs of other db instances, leading to
+    // unnecessary Put stalls.
+    //
+    // If you're increasing this, also consider increasing number of threads in
+    // HIGH priority thread pool. For more information, see
+    // Env::SetBackgroundThreads
+    // Default: 1
+    max_background_flushes = options.max_background_flushes;
+
+    // Specify the maximal size of the info log file. If the log file
+    // is larger than `max_log_file_size`, a new info log file will
+    // be created.
+    // If max_log_file_size == 0, all logs will be written to one
+    // log file.
+    max_log_file_size = options.max_log_file_size;
+
+    // Time for the info log file to roll (in seconds).
+    // If specified with non-zero value, log file will be rolled
+    // if it has been active longer than `log_file_time_to_roll`.
+    // Default: 0 (disabled)
+    log_file_time_to_roll = options.log_file_time_to_roll;
+
+    // Maximal info log files to be kept.
+    // Default: 1000
+    keep_log_file_num = options.keep_log_file_num;
+
+    // Recycle log files.
+    // If non-zero, we will reuse previously written log files for new
+    // logs, overwriting the old data.  The value indicates how many
+    // such files we will keep around at any point in time for later
+    // use.  This is more efficient because the blocks are already
+    // allocated and fdatasync does not need to update the inode after
+    // each write.
+    // Default: 0
+    recycle_log_file_num = options.recycle_log_file_num;
+
+    // manifest file is rolled over on reaching this limit.
+    // The older manifest file be deleted.
+    // The default value is MAX_INT so that roll-over does not take place.
+    max_manifest_file_size = options.max_manifest_file_size;
+
+    // Number of shards used for table cache.
+    table_cache_numshardbits = options.table_cache_numshardbits;
+
+    // DEPRECATED
+    // int table_cache_remove_scan_count_limit;
+
+    // The following two fields affect how archived logs will be deleted.
+    // 1. If both set to 0, logs will be deleted asap and will not get into
+    //    the archive.
+    // 2. If WAL_ttl_seconds is 0 and WAL_size_limit_MB is not 0,
+    //    WAL files will be checked every 10 min and if total size is greater
+    //    then WAL_size_limit_MB, they will be deleted starting with the
+    //    earliest until size_limit is met. All empty files will be deleted.
+    // 3. If WAL_ttl_seconds is not 0 and WAL_size_limit_MB is 0, then
+    //    WAL files will be checked every WAL_ttl_secondsi / 2 and those that
+    //    are older than WAL_ttl_seconds will be deleted.
+    // 4. If both are not 0, WAL files will be checked every 10 min and both
+    //    checks will be performed with ttl being first.
+    WAL_ttl_seconds = options.WAL_ttl_seconds;
+    WAL_size_limit_MB = options.WAL_size_limit_MB;
+
+    // Number of bytes to preallocate (via fallocate) the manifest
+    // files.  Default is 4mb, which is reasonable to reduce random IO
+    // as well as prevent overallocation for mounts that preallocate
+    // large amounts of data (such as xfs's allocsize option).
+    manifest_preallocation_size = options.manifest_preallocation_size;
+
+    // Hint the OS that it should not buffer disk I/O. Enabling this
+    // parameter may improve performance but increases pressure on the
+    // system cache.
+    //
+    // The exact behavior of this parameter is platform dependent.
+    //
+    // On POSIX systems, after RocksDB reads data from disk it will
+    // mark the pages as "unneeded". The operating system may - or may not
+    // - evict these pages from memory, reducing pressure on the system
+    // cache. If the disk block is requested again this can result in
+    // additional disk I/O.
+    //
+    // On WINDOWS system, files will be opened in "unbuffered I/O" mode
+    // which means that data read from the disk will not be cached or
+    // bufferized. The hardware buffer of the devices may however still
+    // be used. Memory mapped files are not impacted by this parameter.
+    //
+    // Default: true
+    allow_os_buffer = options.allow_os_buffer;
+
+    // Allow the OS to mmap file for reading sst tables. Default: false
+    allow_mmap_reads = options.allow_mmap_reads;
+
+    // Allow the OS to mmap file for writing.
+    // DB::SyncWAL() only works if this is set to false.
+    // Default: false
+    allow_mmap_writes = options.allow_mmap_writes;
+
+    // If false, fallocate() calls are bypassed
+    allow_fallocate = options.allow_fallocate;
+
+    // Disable child process inherit open files. Default: true
+    is_fd_close_on_exec = options.is_fd_close_on_exec;
+
+    // DEPRECATED -- this options is no longer used
+    skip_log_error_on_recovery = options.skip_log_error_on_recovery;
+
+    // if not zero, dump rocksdb.stats to LOG every stats_dump_period_sec
+    // Default: 600 (10 min)
+    stats_dump_period_sec = options.stats_dump_period_sec;
+
+    // If set true, will hint the underlying file system that the file
+    // access pattern is random, when a sst file is opened.
+    // Default: true
+    advise_random_on_open = options.advise_random_on_open;
+
+    // Amount of data to build up in memtables across all column
+    // families before writing to disk.
+    //
+    // This is distinct from write_buffer_size, which enforces a limit
+    // for a single memtable.
+    //
+    // This feature is disabled by default. Specify a non-zero value
+    // to enable it.
+    //
+    // Default: 0 (disabled)
+    db_write_buffer_size = options.db_write_buffer_size;
+
+    // Specify the file access pattern once a compaction is started.
+    // It will be applied to all input files of a compaction.
+    // Default: NORMAL
+    access_hint_on_compaction_start = options.access_hint_on_compaction_start;
+
+    // If true, always create a new file descriptor and new table reader
+    // for compaction inputs. Turn this parameter on may introduce extra
+    // memory usage in the table reader, if it allocates extra memory
+    // for indexes. This will allow file descriptor prefetch options
+    // to be set for compaction input files and not to impact file
+    // descriptors for the same file used by user queries.
+    // Suggest to enable BlockBasedTableOptions.cache_index_and_filter_blocks
+    // for this mode if using block-based table.
+    //
+    // Default: false
+    new_table_reader_for_compaction_inputs = options.new_table_reader_for_compaction_inputs;
+
+    // If non-zero, we perform bigger reads when doing compaction. If you're
+    // running RocksDB on spinning disks, you should set this to at least 2MB.
+    // That way RocksDB's compaction is doing sequential instead of random reads.
+    //
+    // When non-zero, we also force new_table_reader_for_compaction_inputs to
+    // true.
+    //
+    // Default: 0
+    compaction_readahead_size = options.compaction_readahead_size;
+
+    // This is a maximum buffer size that is used by WinMmapReadableFile in
+    // unbuffered disk I/O mode. We need to maintain an aligned buffer for
+    // reads. We allow the buffer to grow until the specified value and then
+    // for bigger requests allocate one shot buffers. In unbuffered mode we
+    // always bypass read-ahead buffer at ReadaheadRandomAccessFile
+    // When read-ahead is required we then make use of compaction_readahead_size
+    // value and always try to read ahead. With read-ahead we always
+    // pre-allocate buffer to the size instead of growing it up to a limit.
+    //
+    // This option is currently honored only on Windows
+    //
+    // Default: 1 Mb
+    //
+    // Special value: 0 - means do not maintain per instance buffer. Allocate
+    //                per request buffer and avoid locking.
+    random_access_max_buffer_size = options.random_access_max_buffer_size;
+
+    // This is the maximum buffer size that is used by WritableFileWriter.
+    // On Windows, we need to maintain an aligned buffer for writes.
+    // We allow the buffer to grow until it's size hits the limit.
+    //
+    // Default: 1024 * 1024 (1 MB)
+    writable_file_max_buffer_size = options.writable_file_max_buffer_size;
+
+
+    // Use adaptive mutex, which spins in the user space before resorting
+    // to kernel. This could reduce context switch when the mutex is not
+    // heavily contended. However, if the mutex is hot, we could end up
+    // wasting spin time.
+    // Default: false
+    use_adaptive_mutex = options.use_adaptive_mutex;
+
+    // Allows OS to incrementally sync files to disk while they are being
+    // written, asynchronously, in the background. This operation can be used
+    // to smooth out write I/Os over time. Users shouldn't reply on it for
+    // persistency guarantee.
+    // Issue one request for every bytes_per_sync written. 0 turns it off.
+    // Default: 0
+    //
+    // You may consider using  to regulate write rate to device.
+    // When rate limiter is enabled, it automatically enables bytes_per_sync
+    // to 1MB.
+    //
+    // This option applies to table files
+    bytes_per_sync = options.bytes_per_sync;
+
+    // Same as bytes_per_sync, but applies to WAL files
+    // Default: 0, turned off
+    wal_bytes_per_sync = options.wal_bytes_per_sync;
+
+    // A vector of EventListeners which call-back functions will be called
+    // when specific RocksDB event happens.
+    listeners = options.listeners;
+
+    // If true, then the status of the threads involved in this DB will
+    // be tracked and available via GetThreadList() API.
+    //
+    // Default: false
+    enable_thread_tracking = options.enable_thread_tracking;
+
+    // The limited write rate to DB if soft_pending_compaction_bytes_limit or
+    // level0_slowdown_writes_trigger is triggered, or we are writing to the
+    // last mem table allowed and we allow more than 3 mem tables. It is
+    // calculated using size of user write requests before compression.
+    // RocksDB may decide to slow down more if the compaction still
+    // gets behind further.
+    // Unit: byte per second.
+    //
+    // Default: 2MB/s
+    delayed_write_rate = options.delayed_write_rate;
+
+    // If true, allow multi-writers to update mem tables in parallel.
+    // Only some memtable_factory-s support concurrent writes; currently it
+    // is implemented only for SkipListFactory.  Concurrent memtable writes
+    // are not compatible with inplace_update_support or filter_deletes.
+    // It is strongly recommended to set enable_write_thread_adaptive_yield
+    // if you are going to use this feature.
+    //
+    // THIS FEATURE IS NOT STABLE YET.
+    //
+    // Default: false
+    allow_concurrent_memtable_write = options.allow_concurrent_memtable_write;
+
+    // If true, threads synchronizing with the write batch group leader will
+    // wait for up to write_thread_max_yield_usec before blocking on a mutex.
+    // This can substantially improve throughput for concurrent workloads,
+    // regardless of whether allow_concurrent_memtable_write is enabled.
+    //
+    // THIS FEATURE IS NOT STABLE YET.
+    //
+    // Default: false
+    enable_write_thread_adaptive_yield = options.enable_write_thread_adaptive_yield;
+
+    // The maximum number of microseconds that a write operation will use
+    // a yielding spin loop to coordinate with other write threads before
+    // blocking on a mutex.  (Assuming write_thread_slow_yield_usec is
+    // set properly) increasing this value is likely to increase RocksDB
+    // throughput at the expense of increased CPU usage.
+    //
+    // Default: 100
+    write_thread_max_yield_usec = options.write_thread_max_yield_usec;
+
+    // The latency in microseconds after which a std::this_thread::yield
+    // call (sched_yield on Linux) is considered to be a signal that
+    // other processes or threads would like to use the current core.
+    // Increasing this makes writer threads more likely to take CPU
+    // by spinning, which will show up as an increase in the number of
+    // involuntary context switches.
+    //
+    // Default: 3
+    write_thread_slow_yield_usec = options.write_thread_slow_yield_usec;
+
+    // If true, then DB::Open() will not update the statistics used to optimize
+    // compaction decision by loading table properties from many files.
+    // Turning off this feature will improve DBOpen time especially in
+    // disk environment.
+    //
+    // Default: false
+    skip_stats_update_on_db_open = options.skip_stats_update_on_db_open;
+
+    // Recovery mode to control the consistency while replaying WAL
+    // Default: kTolerateCorruptedTailRecords
+    wal_recovery_mode = options.wal_recovery_mode;
+
+    // A global cache for table-level rows.
+    // Default: nullptr (disabled)
+    // Not supported in ROCKSDB_LITE mode!
+    row_cache = options.row_cache;
+
+  #ifndef ROCKSDB_LITE
+    // A filter object supplied to be invoked while processing write-ahead-logs
+    // (WALs) during recovery. The filter provides a way to inspect log
+    // records, ignoring a particular record or skipping replay.
+    // The filter is invoked at startup and is invoked from a single-thread
+    // currently.
+    wal_filter = options.wal_filter;
+  #endif  // ROCKSDB_LITE
+
+    // If true, then DB::Open / CreateColumnFamily / DropColumnFamily
+    // / SetOptions will fail if options file is not detected or properly
+    // persisted.
+    //
+    // DEFAULT: false
+    fail_if_options_file_error = options.fail_if_options_file_error;
+}
+
 DBOptions::DBOptions(const Options& options)
     : create_if_missing(options.create_if_missing),
       create_missing_column_families(options.create_missing_column_families),
@@ -341,7 +891,8 @@ DBOptions::DBOptions(const Options& options)
 #ifndef ROCKSDB_LITE
       wal_filter(options.wal_filter),
 #endif  // ROCKSDB_LITE
-      fail_if_options_file_error(options.fail_if_options_file_error) {
+      fail_if_options_file_error(options.fail_if_options_file_error)
+{
 }
 
 static const char* const access_hints[] = {

@@ -47,8 +47,8 @@ class WriteBatch : public WriteBatchBase {
   using WriteBatchBase::Put;
   // Store the mapping "key->value" in the database.
   void Put(ColumnFamilyHandle* column_family, const Slice& key,
-           const Slice& value) override;
-  void Put(const Slice& key, const Slice& value) override {
+           const Slice& value);
+  void Put(const Slice& key, const Slice& value)   {
     Put(nullptr, key, value);
   }
 
@@ -56,31 +56,31 @@ class WriteBatch : public WriteBatchBase {
   // that will be written to the database are concatentations of arrays of
   // slices.
   void Put(ColumnFamilyHandle* column_family, const SliceParts& key,
-           const SliceParts& value) override;
-  void Put(const SliceParts& key, const SliceParts& value) override {
+           const SliceParts& value)  ;
+  void Put(const SliceParts& key, const SliceParts& value)   {
     Put(nullptr, key, value);
   }
 
   using WriteBatchBase::Delete;
   // If the database contains a mapping for "key", erase it.  Else do nothing.
-  void Delete(ColumnFamilyHandle* column_family, const Slice& key) override;
-  void Delete(const Slice& key) override { Delete(nullptr, key); }
+  void Delete(ColumnFamilyHandle* column_family, const Slice& key)  ;
+  void Delete(const Slice& key)   { Delete(nullptr, key); }
 
   // variant that takes SliceParts
   void Delete(ColumnFamilyHandle* column_family,
-              const SliceParts& key) override;
-  void Delete(const SliceParts& key) override { Delete(nullptr, key); }
+              const SliceParts& key)  ;
+  void Delete(const SliceParts& key)   { Delete(nullptr, key); }
 
   using WriteBatchBase::SingleDelete;
   // WriteBatch implementation of DB::SingleDelete().  See db.h.
   void SingleDelete(ColumnFamilyHandle* column_family,
-                    const Slice& key) override;
-  void SingleDelete(const Slice& key) override { SingleDelete(nullptr, key); }
+                    const Slice& key)  ;
+  void SingleDelete(const Slice& key)   { SingleDelete(nullptr, key); }
 
   // variant that takes SliceParts
   void SingleDelete(ColumnFamilyHandle* column_family,
-                    const SliceParts& key) override;
-  void SingleDelete(const SliceParts& key) override {
+                    const SliceParts& key)  ;
+  void SingleDelete(const SliceParts& key)   {
     SingleDelete(nullptr, key);
   }
 
@@ -88,15 +88,15 @@ class WriteBatch : public WriteBatchBase {
   // Merge "value" with the existing value of "key" in the database.
   // "key->merge(existing, value)"
   void Merge(ColumnFamilyHandle* column_family, const Slice& key,
-             const Slice& value) override;
-  void Merge(const Slice& key, const Slice& value) override {
+             const Slice& value)  ;
+  void Merge(const Slice& key, const Slice& value)   {
     Merge(nullptr, key, value);
   }
 
   // variant that takes SliceParts
   void Merge(ColumnFamilyHandle* column_family, const SliceParts& key,
-             const SliceParts& value) override;
-  void Merge(const SliceParts& key, const SliceParts& value) override {
+             const SliceParts& value)  ;
+  void Merge(const SliceParts& key, const SliceParts& value)   {
     Merge(nullptr, key, value);
   }
 
@@ -111,22 +111,22 @@ class WriteBatch : public WriteBatchBase {
   //
   // Example application: add timestamps to the transaction log for use in
   // replication.
-  void PutLogData(const Slice& blob) override;
+  void PutLogData(const Slice& blob)  ;
 
   using WriteBatchBase::Clear;
   // Clear all updates buffered in this batch.
-  void Clear() override;
+  void Clear()  ;
 
   // Records the state of the batch for future calls to RollbackToSavePoint().
   // May be called multiple times to set multiple save points.
-  void SetSavePoint() override;
+  void SetSavePoint()  ;
 
   // Remove all entries in this batch (Put, Merge, Delete, PutLogData) since the
   // most recent call to SetSavePoint() and removes the most recent save point.
   // If there is no previous call to SetSavePoint(), Status::NotFound()
   // will be returned.
   // Oterwise returns Status::OK().
-  Status RollbackToSavePoint() override;
+  Status RollbackToSavePoint()  ;
 
   // Support for iterating over the contents of a batch.
   class Handler {
@@ -215,7 +215,7 @@ class WriteBatch : public WriteBatchBase {
   bool HasMerge() const;
 
   using WriteBatchBase::GetWriteBatch;
-  WriteBatch* GetWriteBatch() override { return this; }
+  WriteBatch* GetWriteBatch()   { return this; }
 
   // Constructor with a serialized string object
   explicit WriteBatch(const std::string& rep);

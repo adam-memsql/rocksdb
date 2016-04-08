@@ -240,7 +240,7 @@ inline Status::Status(Status&& s)
 #if !(defined _MSC_VER) || ((defined _MSC_VER) && (_MSC_VER >= 1900))
 noexcept
 #endif
-  : Status() {
+  : code_(kOk), subcode_(kNone), state_(nullptr) {
   *this = std::move(s);
 }
 

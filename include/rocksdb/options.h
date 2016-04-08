@@ -798,6 +798,7 @@ struct ColumnFamilyOptions {
   ColumnFamilyOptions();
   // Create ColumnFamilyOptions from Options
   explicit ColumnFamilyOptions(const Options& options);
+  explicit ColumnFamilyOptions(const ColumnFamilyOptions& options);
 
   void Dump(Logger* log) const;
 };
@@ -806,6 +807,8 @@ struct DBOptions {
   // The function recovers options to the option as in version 4.6.
   DBOptions* OldDefaults(int rocksdb_major_version = 4,
                          int rocksdb_minor_version = 6);
+
+  DBOptions(const DBOptions& options);
 
   // Some functions that make it easier to optimize RocksDB
 
@@ -1199,7 +1202,7 @@ struct DBOptions {
   // Issue one request for every bytes_per_sync written. 0 turns it off.
   // Default: 0
   //
-  // You may consider using rate_limiter to regulate write rate to device.
+  // You may consider using  to regulate write rate to device.
   // When rate limiter is enabled, it automatically enables bytes_per_sync
   // to 1MB.
   //
@@ -1543,22 +1546,42 @@ enum class BottommostLevelCompaction {
 
 // CompactRangeOptions is used by CompactRange() call.
 struct CompactRangeOptions {
+
+    CompactRangeOptions()
+    {
+        // If true, no other compaction will run at the same time as this
+        // manual compaction
+        exclusive_manual_compaction = true;
+        // If true, compacted files will be moved to the minimum level capable
+        // of holding the data or given level (specified non-negative target_level).
+        change_level = false;
+        // If change_level is true and target_level have non-negative value, compacted
+        // files will be moved to target_level.
+        target_level = -1;
+        // Compaction outputs will be placed in options.db_paths[target_path_id].
+        // Behavior is undefined if target_path_id is out of range.
+        target_path_id = 0;
+        // By default level based compaction will only compact the bottommost level
+        // if there is a compaction filter
+        bottommost_level_compaction =
+            BottommostLevelCompaction::kIfHaveCompactionFilter;
+    }
+
   // If true, no other compaction will run at the same time as this
   // manual compaction
-  bool exclusive_manual_compaction = true;
+  bool exclusive_manual_compaction;
   // If true, compacted files will be moved to the minimum level capable
   // of holding the data or given level (specified non-negative target_level).
-  bool change_level = false;
+  bool change_level;
   // If change_level is true and target_level have non-negative value, compacted
   // files will be moved to target_level.
-  int target_level = -1;
+  int target_level;
   // Compaction outputs will be placed in options.db_paths[target_path_id].
   // Behavior is undefined if target_path_id is out of range.
-  uint32_t target_path_id = 0;
+  uint32_t target_path_id;
   // By default level based compaction will only compact the bottommost level
   // if there is a compaction filter
-  BottommostLevelCompaction bottommost_level_compaction =
-      BottommostLevelCompaction::kIfHaveCompactionFilter;
+  BottommostLevelCompaction bottommost_level_compaction;
 };
 }  // namespace rocksdb
 

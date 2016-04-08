@@ -123,28 +123,55 @@ class TablePropertiesCollectorFactory {
 // table.
 struct TableProperties {
  public:
+
+    TableProperties()
+    {
+        // the total size of all data blocks.
+        data_size = 0;
+        // the size of index block.
+        index_size = 0;
+        // the size of filter block.
+        filter_size = 0;
+        // total raw key size
+        raw_key_size = 0;
+        // total raw value size
+        raw_value_size = 0;
+        // the number of blocks in this table
+        num_data_blocks = 0;
+        // the number of entries in this table
+        num_entries = 0;
+        // format version, reserved for backward compatibility
+        format_version = 0;
+        // If 0, key is variable length. Otherwise number of bytes for each key.
+        fixed_key_len = 0;
+        // ID of column family for this SST file, corresponding to the CF identified
+        // by column_family_name.
+        column_family_id =
+            rocksdb::TablePropertiesCollectorFactory::Context::kUnknownColumnFamily;
+
+    }
+
   // the total size of all data blocks.
-  uint64_t data_size = 0;
+  uint64_t data_size;
   // the size of index block.
-  uint64_t index_size = 0;
+  uint64_t index_size;
   // the size of filter block.
-  uint64_t filter_size = 0;
+  uint64_t filter_size;
   // total raw key size
-  uint64_t raw_key_size = 0;
+  uint64_t raw_key_size;
   // total raw value size
-  uint64_t raw_value_size = 0;
+  uint64_t raw_value_size;
   // the number of blocks in this table
-  uint64_t num_data_blocks = 0;
+  uint64_t num_data_blocks;
   // the number of entries in this table
-  uint64_t num_entries = 0;
+  uint64_t num_entries;
   // format version, reserved for backward compatibility
-  uint64_t format_version = 0;
+  uint64_t format_version;
   // If 0, key is variable length. Otherwise number of bytes for each key.
-  uint64_t fixed_key_len = 0;
+  uint64_t fixed_key_len;
   // ID of column family for this SST file, corresponding to the CF identified
   // by column_family_name.
-  uint64_t column_family_id =
-      rocksdb::TablePropertiesCollectorFactory::Context::kUnknownColumnFamily;
+  uint64_t column_family_id;
 
   // Name of the column family with which this SST file is associated.
   // If column family is unknown, `column_family_name` will be an empty string.
